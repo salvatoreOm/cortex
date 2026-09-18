@@ -1,0 +1,23 @@
+# docker-compose.yml
+# Works with both `podman-compose` and `docker-compose` (Podman is Docker-CLI compatible)
+#
+# Desired state: a Postgres container, with pgvector, on port 5432, with a persistent volume.
+
+version: "3.9"
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: cortex-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: salvatoreom
+      POSTGRES_PASSWORD: "omparihar@123"
+      POSTGRES_DB: cortex_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - cortex_pg_data:/var/lib/postgresql/data
+
+volumes:
+  cortex_pg_data:
