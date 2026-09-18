@@ -8,6 +8,10 @@ venv/
 # Env / secrets
 .env
 
+# Local-only docs (not for the repo)
+CLAUDE.md
+docs/
+
 # OS
 .DS_Store
 
