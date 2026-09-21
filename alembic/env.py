@@ -9,6 +9,8 @@ from alembic import context
 from app.core.config import get_settings
 from app.db.base import Base
 
+import app.models  # noqa: F401 - registers every table on Base.metadata for autogenerate
+
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
 config = context.config
@@ -18,7 +20,6 @@ config = context.config
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-# Import model modules here (Phase 1+) so autogenerate sees their tables.
 target_metadata = Base.metadata
 
 # The URL comes from app settings rather than alembic.ini: ConfigParser treats
