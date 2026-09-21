@@ -3,6 +3,7 @@ from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from app import models  # noqa: F401 - registers every table on Base.metadata before any query runs
@@ -23,6 +24,17 @@ async def lifespan(_: FastAPI) -> AsyncGenerator[None, None]:
 
 
 app = FastAPI(title=settings.app_name, lifespan=lifespan)
+
+# Local personal project, no cookies involved (auth is a header, not a
+# cookie), so a wide-open CORS policy is fine here - it just lets the
+# frontend (served from its own local port) call this API from the browser.
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 app.include_router(health.router)
 app.include_router(auth.router)
 app.include_router(documents.router)

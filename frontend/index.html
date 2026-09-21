@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Cortex</title>
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+<!-- Auth screen: shown until we have an API key saved in the browser -->
+<div id="auth-screen" class="screen">
+  <div class="auth-card">
+    <h1>Cortex</h1>
+    <p class="subtitle">Ask questions grounded in your own documents.</p>
+
+    <form id="signup-form">
+      <h2>Sign up</h2>
+      <input id="signup-email" type="email" placeholder="you@example.com" required />
+      <button type="submit">Create account</button>
+    </form>
+
+    <div class="divider">or</div>
+
+    <form id="login-form">
+      <h2>Use an existing API key</h2>
+      <input id="existing-key" type="text" placeholder="Paste your API key" required />
+      <button type="submit">Continue</button>
+    </form>
+
+    <p id="auth-error" class="error"></p>
+  </div>
+</div>
+
+<!-- Main app: documents + chat -->
+<div id="app-screen" class="screen hidden">
+  <header>
+    <h1>Cortex</h1>
+    <div class="header-right">
+      <span id="user-email"></span>
+      <button id="logout-btn" class="ghost-btn">Log out</button>
+    </div>
+  </header>
+
+  <div class="layout">
+    <aside class="sidebar">
+      <section>
+        <h2>Documents</h2>
+        <form id="upload-form">
+          <input id="file-input" type="file" accept=".pdf,.txt,text/plain,application/pdf" required />
+          <button type="submit">Upload</button>
+        </form>
+        <p id="upload-status" class="hint"></p>
+        <ul id="document-list" class="list"></ul>
+      </section>
+
+      <section>
+        <h2>Chats</h2>
+        <button id="new-chat-btn">+ New chat</button>
+        <ul id="session-list" class="list"></ul>
+      </section>
+    </aside>
+
+    <main class="chat-panel">
+      <div id="chat-empty" class="empty-state">
+        <p>Select a chat on the left, or start a new one.</p>
+      </div>
+
+      <div id="chat-view" class="hidden">
+        <div id="messages"></div>
+        <form id="message-form">
+          <input id="message-input" type="text" placeholder="Ask a question..." autocomplete="off" required />
+          <button type="submit">Send</button>
+        </form>
+      </div>
+    </main>
+  </div>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>
