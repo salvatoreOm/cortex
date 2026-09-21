@@ -27,3 +27,9 @@ async def list_documents(db: AsyncSession, *, user_id: uuid.UUID) -> list[Docume
     )
     result = await db.execute(query)
     return list(result.scalars().all())
+
+
+async def delete_document(db: AsyncSession, document: Document) -> None:
+    # chunks.document_id has ON DELETE CASCADE, so this takes the chunks with it.
+    await db.delete(document)
+    await db.flush()

@@ -19,9 +19,19 @@ CONTENT_TYPE_TO_SOURCE_TYPE = {
     "text/plain": SourceType.text,
 }
 
+MAX_UPLOAD_BYTES = 20 * 1024 * 1024  # 20MB - plenty for a personal document store
+
 
 class UnsupportedFileTypeError(Exception):
     """Raised when the uploaded file's content type isn't one we can ingest."""
+
+
+class EmptyFileError(Exception):
+    """Raised when the uploaded file has no bytes at all."""
+
+
+class FileTooLargeError(Exception):
+    """Raised when the uploaded file exceeds MAX_UPLOAD_BYTES."""
 
 
 def _extract_text(raw: bytes, source_type: SourceType) -> str:
@@ -44,6 +54,14 @@ async def ingest_upload(db: AsyncSession, *, user_id: uuid.UUID, file: UploadFil
     if source_type is None:
         raise UnsupportedFileTypeError(f"Unsupported content type: {file.content_type}")
 
+    raw = await file.read()
+    if not raw:
+        raise EmptyFileError("Uploaded file is empty")
+    if len(raw) > MAX_UPLOAD_BYTES:
+        raise FileTooLargeError(f"File exceeds the {MAX_UPLOAD_BYTES // (1024 * 1024)}MB limit")
+
+    logger.info("Ingestion started: %s (%s, %d bytes)", file.filename, source_type.value, len(raw))
+
     document = await document_repo.create_document(
         db, user_id=user_id, title=file.filename or "untitled", source_type=source_type
     )
@@ -52,7 +70,6 @@ async def ingest_upload(db: AsyncSession, *, user_id: uuid.UUID, file: UploadFil
         document.status = DocumentStatus.processing
         await db.flush()
 
-        raw = await file.read()
         text = _extract_text(raw, source_type)
         pieces = chunk_text(text)
 
@@ -67,6 +84,7 @@ async def ingest_upload(db: AsyncSession, *, user_id: uuid.UUID, file: UploadFil
 
     await db.commit()
     await db.refresh(document)
+    logger.info("Ingestion finished: document %s status=%s", document.id, document.status.value)
     return document
 
 
@@ -77,8 +95,9 @@ async def embed_chunks(db: AsyncSession, document: Document) -> None:
     DB session of its own - never reuse the request's session here, since
     that one is already closed by the time a background task runs.
     """
+    chunks = await chunk_repo.list_chunks_for_document(db, document.id)
+    logger.info("Embedding started: document %s, %d chunks", document.id, len(chunks))
     try:
-        chunks = await chunk_repo.list_chunks_for_document(db, document.id)
         for chunk in chunks:
             chunk.embedding = await get_embedding(chunk.content)
         document.status = DocumentStatus.done
@@ -87,3 +106,4 @@ async def embed_chunks(db: AsyncSession, document: Document) -> None:
         document.status = DocumentStatus.failed
 
     await db.commit()
+    logger.info("Embedding finished: document %s status=%s", document.id, document.status.value)
