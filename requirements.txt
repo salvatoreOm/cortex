@@ -8,3 +8,6 @@ pgvector
 pypdf
 python-multipart
 openai
+pytest
+pytest-asyncio
+httpx
