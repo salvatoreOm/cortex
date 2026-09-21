@@ -1,3 +1,4 @@
+from collections.abc import AsyncGenerator
 from functools import lru_cache
 
 from openai import AsyncOpenAI
@@ -39,3 +40,20 @@ async def get_chat_completion(messages: list[dict[str, str]]) -> str:
         model=settings.azure_chat_deployment, messages=messages
     )
     return response.choices[0].message.content or ""
+
+
+async def stream_chat_completion(messages: list[dict[str, str]]) -> AsyncGenerator[str, None]:
+    """Like get_chat_completion, but yields text as it arrives instead of waiting for the full reply."""
+    settings = get_settings()
+    if not settings.azure_chat_deployment:
+        raise AzureConfigError("AZURE_CHAT_DEPLOYMENT must be set in .env")
+
+    stream = await _get_client().chat.completions.create(
+        model=settings.azure_chat_deployment, messages=messages, stream=True
+    )
+    async for chunk in stream:
+        if not chunk.choices:
+            continue
+        delta = chunk.choices[0].delta.content
+        if delta:
+            yield delta

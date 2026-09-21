@@ -28,6 +28,16 @@ async def list_chunks_for_document(db: AsyncSession, document_id: uuid.UUID) -> 
     return list(result.scalars().all())
 
 
+async def get_chunks_by_ids(db: AsyncSession, chunk_ids: list[uuid.UUID]) -> list[Chunk]:
+    query = (
+        select(Chunk)
+        .options(selectinload(Chunk.document))
+        .where(Chunk.id.in_(chunk_ids))
+    )
+    result = await db.execute(query)
+    return list(result.scalars().all())
+
+
 async def search_similar_chunks(
     db: AsyncSession, *, user_id: uuid.UUID, query_embedding: list[float], top_k: int = 5
 ) -> list[Chunk]:
