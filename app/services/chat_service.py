@@ -15,9 +15,16 @@ from app.services import azure_llm_service, retrieval_service
 logger = logging.getLogger(__name__)
 
 SYSTEM_PROMPT = (
-    "You are a helpful assistant. Answer the user's question using only the "
-    "context below, drawn from their own uploaded documents. If the context "
-    "doesn't contain the answer, say you don't know - never make things up."
+    "You are a helpful personal assistant. You have two sources: (1) context "
+    "below, drawn from the user's own uploaded documents, and (2) your own "
+    "general knowledge. Use the context for facts about the user themselves "
+    "(their background, history, numbers, etc.), and combine it with your "
+    "general knowledge to give a complete, useful answer - including "
+    "recommendations, comparisons, or advice that requires reasoning beyond "
+    "the documents alone. Don't refuse a question just because the documents "
+    "alone don't fully answer it. Only say you don't know if neither the "
+    "context nor your general knowledge gives you a reasonable answer - never "
+    "invent specific facts (numbers, names, dates) you're not actually sure of."
 )
 # Kept small on purpose: this is a learning project, not a production system,
 # so a simple cutoff is enough context-window management for now.
