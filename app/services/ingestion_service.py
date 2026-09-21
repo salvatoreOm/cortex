@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.document import Document, DocumentStatus, SourceType
 from app.repositories import chunk_repo, document_repo
+from app.services.azure_llm_service import get_embedding
 from app.utils.chunking import chunk_text
 
 logger = logging.getLogger(__name__)
@@ -33,8 +34,11 @@ def _extract_text(raw: bytes, source_type: SourceType) -> str:
 async def ingest_upload(db: AsyncSession, *, user_id: uuid.UUID, file: UploadFile) -> Document:
     """Save the upload as a Document, then extract -> chunk -> store chunks.
 
-    No embeddings yet (that's Phase 2) - this just proves the ingestion
-    pipeline and status tracking work end to end.
+    This part is fast (no network calls), so it stays synchronous - the
+    caller responds to the client right after this returns. On success the
+    document is left in `processing`, meaning "chunked, embeddings pending";
+    the router hands it off to a background job (embed_chunks below) that
+    fills in embeddings and moves it to `done`.
     """
     source_type = CONTENT_TYPE_TO_SOURCE_TYPE.get(file.content_type or "")
     if source_type is None:
@@ -54,7 +58,6 @@ async def ingest_upload(db: AsyncSession, *, user_id: uuid.UUID, file: UploadFil
 
         if pieces:
             await chunk_repo.create_chunks(db, document_id=document.id, texts=pieces)
-            document.status = DocumentStatus.done
         else:
             # No extractable text (e.g. a scanned/empty PDF) - not a bug, just nothing to store.
             document.status = DocumentStatus.failed
@@ -65,3 +68,22 @@ async def ingest_upload(db: AsyncSession, *, user_id: uuid.UUID, file: UploadFil
     await db.commit()
     await db.refresh(document)
     return document
+
+
+async def embed_chunks(db: AsyncSession, document: Document) -> None:
+    """Embed every chunk of `document` (network calls to Azure) and flip its status.
+
+    Called from the background job in app/background/ingestion_jobs.py, on a
+    DB session of its own - never reuse the request's session here, since
+    that one is already closed by the time a background task runs.
+    """
+    try:
+        chunks = await chunk_repo.list_chunks_for_document(db, document.id)
+        for chunk in chunks:
+            chunk.embedding = await get_embedding(chunk.content)
+        document.status = DocumentStatus.done
+    except Exception:
+        logger.exception("Embedding failed for document %s", document.id)
+        document.status = DocumentStatus.failed
+
+    await db.commit()
